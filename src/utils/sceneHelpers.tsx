@@ -1,8 +1,9 @@
 import type { Weather, TreeDensity, PedestrianStatus } from '@/types'
+import type { TimePeriod } from '@/utils/timePeriod'
 import {
   Sun, Cloud, CloudRain, CloudDrizzle, CloudSnow, CloudFog,
   TreePine, TreePine as TreeSparse, Trees,
-  PersonStanding, Users,
+  PersonStanding, Users, Sunrise, SunMedium, Sunset, Moon, Sparkles,
 } from 'lucide-react'
 
 export function getWeatherIcon(weather: Weather) {
@@ -46,15 +47,18 @@ export function formatTimestamp(iso: string): string {
   return `${year}/${month}/${day} ${hour}:${minute}`
 }
 
-export function getTimeOfDay(iso: string): string {
-  const h = new Date(iso).getHours()
-  if (h < 6) return '深夜'
-  if (h < 9) return '清晨'
-  if (h < 12) return '上午'
-  if (h < 14) return '中午'
-  if (h < 17) return '下午'
-  if (h < 19) return '傍晚'
-  return '夜晚'
+export function getTimePeriodIcon(period: TimePeriod, className = 'w-4 h-4') {
+  const map: Record<TimePeriod, React.ReactNode> = {
+    '清晨': <Sunrise className={`${className} text-amber-300`} />,
+    '白天': <SunMedium className={`${className} text-dusk-300`} />,
+    '傍晚': <Sunset className={`${className} text-dusk-400`} />,
+    '夜间': <Moon className={`${className} text-blue-300`} />,
+  }
+  return map[period]
+}
+
+export function getAutoPeriodIcon(className = 'w-3 h-3') {
+  return <Sparkles className={`${className} text-dusk-400`} />
 }
 
 export const WRITING_PROMPTS = [

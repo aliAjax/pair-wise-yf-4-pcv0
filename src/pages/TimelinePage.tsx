@@ -3,18 +3,21 @@ import { Search, Route, X, Trash2, Clock, MapPin } from 'lucide-react'
 import { useSceneStore } from '@/store/useSceneStore'
 import {
   formatTimestamp,
-  getTimeOfDay,
   getWeatherIcon,
   getTreeIcon,
   getPedestrianIcon,
+  getTimePeriodIcon,
 } from '@/utils/sceneHelpers'
-import type { WindowScene } from '@/types'
+import { TIME_PERIODS } from '@/utils/timePeriod'
+import type { WindowScene, TimePeriod } from '@/types'
 
 export default function TimelinePage() {
   const { routeNames, selectedRoute, currentRouteScenes, selectRoute, loadAll, deleteScene } =
     useSceneStore()
   const [search, setSearch] = useState('')
   const [detailScene, setDetailScene] = useState<WindowScene | null>(null)
+  // '' 表示该线路下不按时段筛选（全部）
+  const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod | ''>('')
 
   useEffect(() => {
     loadAll()
@@ -24,9 +27,14 @@ export default function TimelinePage() {
     r.toLowerCase().includes(search.toLowerCase())
   )
 
-  const sorted = [...currentRouteScenes].sort(
-    (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-  )
+  const sorted = [...currentRouteScenes]
+    .filter((s) => !selectedPeriod || s.timePeriod === selectedPeriod)
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+
+  const handleSelectRoute = (name: string) => {
+    selectRoute(name)
+    setSelectedPeriod('')
+  }
 
   const handleDelete = (id: string) => {
     deleteScene(id)
@@ -53,7 +61,7 @@ export default function TimelinePage() {
           </div>
           <div className="flex flex-wrap gap-2">
             <button
-              onClick={() => selectRoute('')}
+              onClick={() => handleSelectRoute('')}
               className={`rounded-full px-3.5 py-1.5 text-xs transition-colors ${
                 !selectedRoute
                   ? 'bg-dusk-400 text-teal-950'
@@ -65,7 +73,7 @@ export default function TimelinePage() {
             {filteredRoutes.map((name) => (
               <button
                 key={name}
-                onClick={() => selectRoute(name)}
+                onClick={() => handleSelectRoute(name)}
                 className={`rounded-full px-3.5 py-1.5 text-xs transition-colors ${
                   selectedRoute === name
                     ? 'bg-dusk-400 text-teal-950'
@@ -77,14 +85,56 @@ export default function TimelinePage() {
               </button>
             ))}
           </div>
+
+          {selectedRoute && (
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              <span className="text-xs text-mist-500">时段</span>
+              <button
+                onClick={() => setSelectedPeriod('')}
+                className={`rounded-full px-3 py-1 text-xs transition-colors ${
+                  !selectedPeriod
+                    ? 'bg-dusk-400/20 text-dusk-300 border border-dusk-400/50'
+                    : 'bg-teal-900 text-mist-400 hover:bg-teal-800'
+                }`}
+              >
+                全部
+              </button>
+              {TIME_PERIODS.map((p) => (
+                <button
+                  key={p}
+                  onClick={() => setSelectedPeriod(p)}
+                  className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs transition-colors ${
+                    selectedPeriod === p
+                      ? 'bg-dusk-400/20 text-dusk-300 border border-dusk-400/50'
+                      : 'bg-teal-900 text-mist-400 hover:bg-teal-800'
+                  }`}
+                >
+                  {getTimePeriodIcon(p, 'w-3 h-3')}
+                  {p}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {sorted.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 text-mist-400">
             <div className="mb-4 text-6xl opacity-30">🪟</div>
-            <p className="text-lg">
-              {selectedRoute ? '该路线暂无窗景记录' : '选择一条路线，开始浏览窗景'}
-            </p>
+            {selectedPeriod ? (
+              <>
+                <p className="mb-4 text-lg">该时段暂无记录</p>
+                <button
+                  onClick={() => setSelectedPeriod('')}
+                  className="rounded-full border border-dusk-400/40 bg-dusk-400/10 px-4 py-1.5 text-xs text-dusk-300 transition-colors hover:bg-dusk-400/20"
+                >
+                  全部恢复
+                </button>
+              </>
+            ) : (
+              <p className="text-lg">
+                {selectedRoute ? '该路线暂无窗景记录' : '选择一条路线，开始浏览窗景'}
+              </p>
+            )}
           </div>
         ) : (
           <div className="relative pl-8">
@@ -97,8 +147,9 @@ export default function TimelinePage() {
                     <p className="text-xs text-dusk-400">
                       {formatTimestamp(scene.timestamp)}
                     </p>
-                    <p className="mt-0.5 text-[10px] text-mist-500">
-                      {getTimeOfDay(scene.timestamp)}
+                    <p className="mt-0.5 inline-flex items-center justify-end gap-0.5 text-[10px] text-mist-500">
+                      {getTimePeriodIcon(scene.timePeriod, 'w-3 h-3')}
+                      {scene.timePeriod}
                     </p>
                   </div>
                   <button
@@ -171,7 +222,8 @@ export default function TimelinePage() {
                 <Clock className="w-4 h-4 text-dusk-400" />
                 <span>{formatTimestamp(detailScene.timestamp)}</span>
                 <span className="text-teal-600">·</span>
-                <span>{getTimeOfDay(detailScene.timestamp)}</span>
+                {getTimePeriodIcon(detailScene.timePeriod)}
+                <span>{detailScene.timePeriod}</span>
               </div>
               <div className="flex items-center gap-3 text-mist-300">
                 {getTreeIcon(detailScene.treeDensity)}

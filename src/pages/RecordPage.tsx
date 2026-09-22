@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
-import { Bus, MapPin, Armchair, Clock, CloudSun, Signpost, TreePine, Users, FileText, Send } from 'lucide-react'
+import { Bus, MapPin, Armchair, Clock, CloudSun, Signpost, TreePine, Users, FileText, Send, Sunrise } from 'lucide-react'
 import { useSceneStore } from '@/store/useSceneStore'
-import { getWeatherIcon, getTreeIcon, getPedestrianIcon, formatTimestamp } from '@/utils/sceneHelpers'
+import { getWeatherIcon, getTreeIcon, getPedestrianIcon, getTimePeriodIcon, getAutoPeriodIcon, formatTimestamp } from '@/utils/sceneHelpers'
+import { TIME_PERIOD_CHOICES } from '@/utils/timePeriod'
 import type { SceneFormData, Weather, TreeDensity, PedestrianStatus, SeatDirection } from '@/types'
 
 const WEATHERS: Weather[] = ['晴', '多云', '阴', '小雨', '大雨', '雪', '雾']
@@ -12,6 +13,7 @@ const initialForm: SceneFormData = {
   routeName: '',
   segment: '',
   seatDirection: '左',
+  timePeriodChoice: '自动',
   weather: '晴',
   signText: '',
   treeDensity: '适中',
@@ -88,6 +90,25 @@ export default function RecordPage() {
                 </button>
               ))}
             </div>
+          </div>
+          <div>
+            <label className="text-mist-300 text-xs mb-1 flex items-center gap-1"><Sunrise className="w-3 h-3" />观察时段</label>
+            <div className="grid grid-cols-5 gap-2">
+              {TIME_PERIOD_CHOICES.map((p) => (
+                <button key={p} type="button" onClick={() => update('timePeriodChoice', p)}
+                  className={`flex flex-col items-center gap-1 py-2 rounded-xl text-xs transition ${form.timePeriodChoice === p ? 'bg-dusk-400/20 border border-dusk-400 text-dusk-400' : 'bg-teal-850 border border-transparent text-mist-300'}`}>
+                  {p === '自动'
+                    ? getAutoPeriodIcon()
+                    : getTimePeriodIcon(p, 'w-3.5 h-3.5')}
+                  {p}
+                </button>
+              ))}
+            </div>
+            <p className="mt-1 text-[10px] leading-relaxed text-mist-500">
+              {form.timePeriodChoice === '自动'
+                ? '自动档保存时优先沿用同线路最近记录，无历史再按当前时间判定（5-9清晨 / 9-17白天 / 17-20傍晚 / 其余夜间）'
+                : '手动选择只影响本次记录'}
+            </p>
           </div>
         </section>
 
