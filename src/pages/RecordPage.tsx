@@ -1,12 +1,20 @@
 import { useState, useEffect } from 'react'
-import { Bus, MapPin, Armchair, Clock, CloudSun, Signpost, TreePine, Users, FileText, Send } from 'lucide-react'
+import { Bus, MapPin, Armchair, Clock, CloudSun, Signpost, TreePine, Users, FileText, Send, Sunrise, Sun, Sunset, Moon, Wand2 } from 'lucide-react'
 import { useSceneStore } from '@/store/useSceneStore'
-import { getWeatherIcon, getTreeIcon, getPedestrianIcon, formatTimestamp } from '@/utils/sceneHelpers'
-import type { SceneFormData, Weather, TreeDensity, PedestrianStatus, SeatDirection } from '@/types'
+import { getWeatherIcon, getTreeIcon, getPedestrianIcon, formatTimestamp, PERIOD_OPTIONS, resolveAutoPeriod } from '@/utils/sceneHelpers'
+import type { SceneFormData, Weather, TreeDensity, PedestrianStatus, SeatDirection, ObservationPeriod } from '@/types'
 
 const WEATHERS: Weather[] = ['晴', '多云', '阴', '小雨', '大雨', '雪', '雾']
 const TREES: TreeDensity[] = ['稀疏', '适中', '茂密']
 const PEDESTRIANS: PedestrianStatus[] = ['稀少', '零星', '密集']
+
+const PERIOD_ICONS: Record<ObservationPeriod, React.ReactNode> = {
+  '自动': <Wand2 className="w-3.5 h-3.5" />,
+  '清晨': <Sunrise className="w-3.5 h-3.5" />,
+  '白天': <Sun className="w-3.5 h-3.5" />,
+  '傍晚': <Sunset className="w-3.5 h-3.5" />,
+  '夜间': <Moon className="w-3.5 h-3.5" />,
+}
 
 const initialForm: SceneFormData = {
   routeName: '',
@@ -17,11 +25,13 @@ const initialForm: SceneFormData = {
   treeDensity: '适中',
   pedestrianStatus: '稀少',
   note: '',
+  period: '自动',
 }
 
 export default function RecordPage() {
   const saveScene = useSceneStore((s) => s.saveScene)
   const loadAll = useSceneStore((s) => s.loadAll)
+  const scenes = useSceneStore((s) => s.scenes)
   const [form, setForm] = useState<SceneFormData>(initialForm)
   const [now, setNow] = useState(new Date())
   const [showSuccess, setShowSuccess] = useState(false)
@@ -35,6 +45,15 @@ export default function RecordPage() {
 
   const update = <K extends keyof SceneFormData>(key: K, val: SceneFormData[K]) =>
     setForm((prev) => ({ ...prev, [key]: val }))
+
+  // 自动档的预解析结果（仅用于提示，保存时再计算）
+  const sameRouteScenes = form.routeName.trim()
+    ? scenes.filter((s) => s.routeName === form.routeName.trim())
+    : []
+  const autoResolved = resolveAutoPeriod(now.toISOString(), sameRouteScenes)
+  const autoHintSource = sameRouteScenes.length > 0
+    ? `将沿用「${form.routeName.trim()}」最近记录的时段`
+    : '该线路暂无历史，按当前时间判断'
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -88,6 +107,23 @@ export default function RecordPage() {
                 </button>
               ))}
             </div>
+          </div>
+          <div>
+            <label className="text-mist-300 text-xs mb-1 flex items-center gap-1"><Clock className="w-3 h-3" />观察时段</label>
+            <div className="grid grid-cols-5 gap-2">
+              {PERIOD_OPTIONS.map((p) => (
+                <button key={p} type="button" onClick={() => update('period', p)}
+                  className={`flex flex-col items-center gap-1 py-2 rounded-xl text-xs transition ${form.period === p ? 'bg-dusk-400/20 border border-dusk-400 text-dusk-400' : 'bg-teal-850 border border-transparent text-mist-300'}`}>
+                  {PERIOD_ICONS[p]}{p}
+                </button>
+              ))}
+            </div>
+            {form.period === '自动' && (
+              <p className="mt-1.5 text-[11px] text-mist-500 flex items-center gap-1">
+                <Wand2 className="w-3 h-3" />
+                {autoHintSource}，本次将记为「{autoResolved}」；手动选择只影响本次
+              </p>
+            )}
           </div>
         </section>
 

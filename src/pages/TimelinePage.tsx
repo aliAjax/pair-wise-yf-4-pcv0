@@ -3,30 +3,37 @@ import { Search, Route, X, Trash2, Clock, MapPin } from 'lucide-react'
 import { useSceneStore } from '@/store/useSceneStore'
 import {
   formatTimestamp,
-  getTimeOfDay,
   getWeatherIcon,
   getTreeIcon,
   getPedestrianIcon,
+  resolveScenePeriod,
+  RESOLVED_PERIODS,
 } from '@/utils/sceneHelpers'
-import type { WindowScene } from '@/types'
+import type { WindowScene, ResolvedPeriod } from '@/types'
 
 export default function TimelinePage() {
   const { routeNames, selectedRoute, currentRouteScenes, selectRoute, loadAll, deleteScene } =
     useSceneStore()
   const [search, setSearch] = useState('')
   const [detailScene, setDetailScene] = useState<WindowScene | null>(null)
+  const [selectedPeriod, setSelectedPeriod] = useState<ResolvedPeriod | ''>('')
 
   useEffect(() => {
     loadAll()
   }, [loadAll])
 
+  // 切换线路时恢复“全部时段”
+  useEffect(() => {
+    setSelectedPeriod('')
+  }, [selectedRoute])
+
   const filteredRoutes = routeNames.filter((r) =>
     r.toLowerCase().includes(search.toLowerCase())
   )
 
-  const sorted = [...currentRouteScenes].sort(
-    (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-  )
+  const sorted = [...currentRouteScenes]
+    .filter((s) => !selectedPeriod || resolveScenePeriod(s) === selectedPeriod)
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
 
   const handleDelete = (id: string) => {
     deleteScene(id)
@@ -77,14 +84,60 @@ export default function TimelinePage() {
               </button>
             ))}
           </div>
+          {selectedRoute && currentRouteScenes.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              <span className="text-xs text-mist-500">时段</span>
+              <button
+                onClick={() => setSelectedPeriod('')}
+                className={`rounded-full px-3 py-1 text-xs transition-colors ${
+                  !selectedPeriod
+                    ? 'bg-dusk-400/20 text-dusk-400 border border-dusk-400/60'
+                    : 'bg-teal-900 text-mist-300 hover:bg-teal-800'
+                }`}
+              >
+                全部
+              </button>
+              {RESOLVED_PERIODS.map((p) => {
+                const count = currentRouteScenes.filter(
+                  (s) => resolveScenePeriod(s) === p,
+                ).length
+                return (
+                  <button
+                    key={p}
+                    onClick={() => setSelectedPeriod(p)}
+                    className={`rounded-full px-3 py-1 text-xs transition-colors ${
+                      selectedPeriod === p
+                        ? 'bg-dusk-400/20 text-dusk-400 border border-dusk-400/60'
+                        : 'bg-teal-900 text-mist-300 hover:bg-teal-800'
+                    }`}
+                  >
+                    {p}
+                    <span className="ml-1 text-[10px] text-mist-500">{count}</span>
+                  </button>
+                )
+              })}
+            </div>
+          )}
         </div>
 
         {sorted.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 text-mist-400">
             <div className="mb-4 text-6xl opacity-30">🪟</div>
-            <p className="text-lg">
-              {selectedRoute ? '该路线暂无窗景记录' : '选择一条路线，开始浏览窗景'}
-            </p>
+            {selectedPeriod ? (
+              <>
+                <p className="text-lg">该时段暂无记录</p>
+                <button
+                  onClick={() => setSelectedPeriod('')}
+                  className="mt-4 rounded-full border border-dusk-400/40 bg-dusk-400/10 px-4 py-1.5 text-xs text-dusk-400 transition-colors hover:bg-dusk-400/20"
+                >
+                  全部恢复
+                </button>
+              </>
+            ) : (
+              <p className="text-lg">
+                {selectedRoute ? '该路线暂无窗景记录' : '选择一条路线，开始浏览窗景'}
+              </p>
+            )}
           </div>
         ) : (
           <div className="relative pl-8">
@@ -98,7 +151,7 @@ export default function TimelinePage() {
                       {formatTimestamp(scene.timestamp)}
                     </p>
                     <p className="mt-0.5 text-[10px] text-mist-500">
-                      {getTimeOfDay(scene.timestamp)}
+                      {resolveScenePeriod(scene)}
                     </p>
                   </div>
                   <button
@@ -171,7 +224,7 @@ export default function TimelinePage() {
                 <Clock className="w-4 h-4 text-dusk-400" />
                 <span>{formatTimestamp(detailScene.timestamp)}</span>
                 <span className="text-teal-600">·</span>
-                <span>{getTimeOfDay(detailScene.timestamp)}</span>
+                <span>{resolveScenePeriod(detailScene)}</span>
               </div>
               <div className="flex items-center gap-3 text-mist-300">
                 {getTreeIcon(detailScene.treeDensity)}

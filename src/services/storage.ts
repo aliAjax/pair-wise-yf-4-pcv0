@@ -1,4 +1,5 @@
 import type { WindowScene } from '@/types'
+import { getPeriodByHour } from '@/utils/sceneHelpers'
 
 const STORAGE_KEY = 'bus_window_scenes'
 
@@ -6,10 +7,28 @@ export function getAllScenes(): WindowScene[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return []
-    return JSON.parse(raw) as WindowScene[]
+    const scenes = JSON.parse(raw) as WindowScene[]
+    return migrateScenes(scenes)
   } catch {
     return []
   }
+}
+
+/**
+ * 数据迁移：旧记录没有 period 字段时按时间戳补算，
+ * 补算结果写回本地，随记录一起保存。
+ */
+function migrateScenes(scenes: WindowScene[]): WindowScene[] {
+  let changed = false
+  const migrated = scenes.map((s) => {
+    if (s.period) return s
+    changed = true
+    return { ...s, period: getPeriodByHour(s.timestamp) }
+  })
+  if (changed) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated))
+  }
+  return migrated
 }
 
 export function saveScene(scene: WindowScene): void {

@@ -6,7 +6,7 @@ import {
   getTreeIcon,
   getPedestrianIcon,
   formatTimestamp,
-  getTimeOfDay,
+  resolveScenePeriod,
 } from '@/utils/sceneHelpers'
 import { Lightbulb, RefreshCw, Quote, Bus, ArrowRight } from 'lucide-react'
 
@@ -113,7 +113,7 @@ export default function InspirePage() {
                 <span>{randomScene.segment}</span>
               </div>
               <div className="flex items-center gap-2">
-                <span>{getTimeOfDay(randomScene.timestamp)}</span>
+                <span>{resolveScenePeriod(randomScene)}</span>
                 <span className="text-mist-500">·</span>
                 <span>{formatTimestamp(randomScene.timestamp).split(' ')[1]}</span>
                 {getWeatherIcon(randomScene.weather)}

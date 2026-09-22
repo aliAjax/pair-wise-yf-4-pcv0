@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { WindowScene, SceneFormData } from '@/types'
+import type { WindowScene, SceneFormData, ResolvedPeriod } from '@/types'
 import {
   getAllScenes,
   saveScene as storageSaveScene,
@@ -8,6 +8,7 @@ import {
   getAllRouteNames,
   getRandomScene,
 } from '@/services/storage'
+import { resolveAutoPeriod } from '@/utils/sceneHelpers'
 
 interface SceneState {
   scenes: WindowScene[]
@@ -36,11 +37,23 @@ export const useSceneStore = create<SceneState>((set) => ({
     set({ scenes, routeNames })
   },
 
-  saveScene: (data: SceneFormData) => {
+  saveScene: (data) => {
+    const timestamp = new Date().toISOString()
+    // 自动档：优先沿用同线路最近记录的时段，没有历史再按小时判断；
+    // 手动选择只影响本次。
+    const sameRouteScenes = getAllScenes().filter(
+      (s) => s.routeName === data.routeName.trim(),
+    )
+    const period: ResolvedPeriod =
+      data.period === '自动'
+        ? resolveAutoPeriod(timestamp, sameRouteScenes)
+        : data.period
     const scene: WindowScene = {
       ...data,
+      routeName: data.routeName.trim(),
+      period,
       id: crypto.randomUUID(),
-      timestamp: new Date().toISOString(),
+      timestamp,
     }
     storageSaveScene(scene)
     const scenes = getAllScenes()
@@ -52,7 +65,7 @@ export const useSceneStore = create<SceneState>((set) => ({
     })
   },
 
-  deleteScene: (id: string) => {
+  deleteScene: (id) => {
     storageDeleteScene(id)
     const scenes = getAllScenes()
     const routeNames = getAllRouteNames()

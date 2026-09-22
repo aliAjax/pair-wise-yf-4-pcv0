@@ -1,9 +1,53 @@
-import type { Weather, TreeDensity, PedestrianStatus } from '@/types'
+import type {
+  Weather,
+  TreeDensity,
+  PedestrianStatus,
+  ObservationPeriod,
+  ResolvedPeriod,
+  WindowScene,
+} from '@/types'
 import {
   Sun, Cloud, CloudRain, CloudDrizzle, CloudSnow, CloudFog,
   TreePine, TreePine as TreeSparse, Trees,
   PersonStanding, Users,
 } from 'lucide-react'
+
+/** 记录页五档时段，自动档排在首位 */
+export const PERIOD_OPTIONS: ObservationPeriod[] = ['自动', '清晨', '白天', '傍晚', '夜间']
+
+/** 时间线筛选用（不含自动档） */
+export const RESOLVED_PERIODS: ResolvedPeriod[] = ['清晨', '白天', '傍晚', '夜间']
+
+/** 按小时兜底判断：5-9 清晨、9-17 白天、17-20 傍晚、其余夜间（区间左闭右开） */
+export function getPeriodByHour(iso: string): ResolvedPeriod {
+  const h = new Date(iso).getHours()
+  if (h >= 5 && h < 9) return '清晨'
+  if (h >= 9 && h < 17) return '白天'
+  if (h >= 17 && h < 20) return '傍晚'
+  return '夜间'
+}
+
+/** 读取记录上保存的时段，旧记录没有该字段时按时间戳补算 */
+export function resolveScenePeriod(scene: WindowScene): ResolvedPeriod {
+  return scene.period ?? getPeriodByHour(scene.timestamp)
+}
+
+/**
+ * 保存自动档时的解析规则：
+ * 优先沿用同线路最近一条记录的时段；没有历史再按小时判断。
+ */
+export function resolveAutoPeriod(
+  iso: string,
+  routeScenes: WindowScene[],
+): ResolvedPeriod {
+  if (routeScenes.length > 0) {
+    const latest = routeScenes.reduce((a, b) =>
+      new Date(a.timestamp).getTime() >= new Date(b.timestamp).getTime() ? a : b,
+    )
+    return resolveScenePeriod(latest)
+  }
+  return getPeriodByHour(iso)
+}
 
 export function getWeatherIcon(weather: Weather) {
   const map: Record<Weather, React.ReactNode> = {
@@ -46,15 +90,9 @@ export function formatTimestamp(iso: string): string {
   return `${year}/${month}/${day} ${hour}:${minute}`
 }
 
+/** @deprecated 时段已改为随记录保存，用 resolveScenePeriod 代替；保留兼容 */
 export function getTimeOfDay(iso: string): string {
-  const h = new Date(iso).getHours()
-  if (h < 6) return '深夜'
-  if (h < 9) return '清晨'
-  if (h < 12) return '上午'
-  if (h < 14) return '中午'
-  if (h < 17) return '下午'
-  if (h < 19) return '傍晚'
-  return '夜晚'
+  return getPeriodByHour(iso)
 }
 
 export const WRITING_PROMPTS = [
